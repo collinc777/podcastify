@@ -3,10 +3,11 @@ from pydantic import Field
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = Field()
-
     model_config = SettingsConfigDict(env_file=".env")
+
+    openai_api_key: str = Field()
 
 
 def init_settings():
-    return Settings()  # type: ignore
+    settings = Settings()  # type: ignore
+    print(settings)

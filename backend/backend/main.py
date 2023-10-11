@@ -1,11 +1,17 @@
-from typing import Union, Literal
+from functools import lru_cache
+from typing import Annotated, Union, Literal
 from pydantic import BaseModel
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
-from backend.settings import init_settings
+from backend.settings import Settings
 
-init_settings()
+
+@lru_cache()
+def get_settings():
+    return Settings()  # type: ignore
+
+
 app = FastAPI()
 
 
@@ -28,10 +34,15 @@ def read_item(item_id: int, q: Union[str, None] = None):
 
 
 @app.post("/generate_script")
-async def generate_script(html: str):
+async def generate_script(
+    html: str, settings: Annotated[Settings, Depends(get_settings)]
+):
     from trafilatura import extract
     import instructor
     import openai
+
+    # get environment variable
+    openai.api_key = settings.openai_api_key
 
     instructor.patch()
     article_text = extract(html)
@@ -41,7 +52,7 @@ async def generate_script(html: str):
         response_model=Script,
         messages=[
             {
-                "role": "human",
+                "role": "user",
                 "content": f"You are a podcast writer. Convert blog posts into NPR-style podcast transcripts with 2 speakers: Rachel and Jack. YOU ONLY OUTPUT VALID JSON. Use the given format to extract information from the following input: {article_text}",
             }
         ],
