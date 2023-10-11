@@ -13,6 +13,7 @@ trafilatura = "^1.6.2"
 instructor = "^0.2.8"
 openai = "^0.28.1"
 pydantic-settings = "^2.0.3"
+boto3 = "^1.28.62"
 
 
 [build-system]
