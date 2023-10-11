@@ -10,6 +10,9 @@ python = "^3.11"
 fastapi = "^0.103.2"
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 trafilatura = "^1.6.2"
+instructor = "^0.2.8"
+openai = "^0.28.1"
+pydantic-settings = "^2.0.3"
 
 
 [build-system]
