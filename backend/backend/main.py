@@ -28,15 +28,11 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-
-
 @app.post("/api/generate_script")
 async def generate_script(url: str):
-    _script = await _generate_script(url=url)
-    audio = generate_audio_from_script(script=_script)
+    print("do i get called")
+    script = await _generate_script(url=url)
+    audio = generate_audio_from_script(script=script)
     return StreamingResponse(
         audio,
         headers={"Content-Type": "audio/mpeg"},
@@ -81,7 +77,6 @@ def generate_audio_from_script(
         region_name="us-east-1",
     )
     client = session.client("polly")
-    audio_segments = []
     # silence bytes for 1 second
     for script_line in script.script_lines:
         match (script_line.speaker):
