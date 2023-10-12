@@ -1,7 +1,9 @@
 from functools import lru_cache
+from pydub import AudioSegment
+import io
 from typing import Annotated, Union, Literal, Any
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from fastapi import Depends, FastAPI
 
@@ -29,9 +31,9 @@ def read_root():
 
 
 @app.post("/api/generate_script")
-async def generate_script(url: str):
+async def generate_script(url: HttpUrl):
     print("do i get called")
-    script = await _generate_script(url=url)
+    script = await _generate_script(url=url.unicode_string())
     audio = generate_audio_from_script(script=script)
     return StreamingResponse(
         audio,
@@ -55,10 +57,11 @@ async def _generate_script(*, url: str):
     script: Script = await openai.ChatCompletion.acreate(
         model="gpt-4",
         response_model=Script,
+        max_retries=2,
         messages=[
             {
                 "role": "user",
-                "content": f"You are a podcast writer. Convert blog posts into NPR-style podcast transcripts with 2 speakers: Rachel and Jack. YOU ONLY OUTPUT VALID JSON. Use the given format to extract information from the following input: {article['text']}",
+                "content": f"You are a podcast writer. You convert blog posts into NPR-style podcast transcripts with 2 speakers: Rachel and Jack. Rachel and Jack have a great witty rapport. YOU ONLY OUTPUT VALID JSON. Use the given format to extract information from the following input: {article['text']}",
             }
         ],
     )
@@ -77,7 +80,7 @@ def generate_audio_from_script(
         region_name="us-east-1",
     )
     client = session.client("polly")
-    # silence bytes for 1 second
+    # silence bytes for .5 second
     for script_line in script.script_lines:
         match (script_line.speaker):
             case "Rachel":
@@ -89,10 +92,15 @@ def generate_audio_from_script(
         polly_result = generate_audio_bytes(
             client=client, text=script_line.content, speaker=polly_speaker
         )
-        yield polly_result
+        audio1 = AudioSegment.from_file(io.BytesIO(polly_result))
+        silence = AudioSegment.silent(duration=500)
+        final_audio: AudioSegment = audio1 + silence
+        byte_io = io.BytesIO()
+        final_audio.export(byte_io, format="mp3")
+        yield byte_io.getvalue()
 
 
-def generate_audio_bytes(*, client: Any, text: str, speaker: str):
+def generate_audio_bytes(*, client: Any, text: str, speaker: str) -> bytes:
     result = client.synthesize_speech(
         Text=text,
         OutputFormat="mp3",
